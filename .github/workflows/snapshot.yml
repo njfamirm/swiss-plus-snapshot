@@ -1,0 +1,47 @@
+name: Snapshot
+
+# Daily static copy of https://www.swissplus.co for SEO fallback, published on GitHub Pages.
+# If the site is down or the build fails, the previous deployment stays live (build.mjs exits non-zero
+# when fewer than 95% of the sitemap pages could be fetched).
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build snapshot
+        run: node scripts/build.mjs
+        env:
+          BASE: https://www.swissplus.co
+          OUT: dist
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
